@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Earth with Device Orientation Navigation</title>
+    <title>3D Earth with Device Orientation Navigation and Calibration</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -14,9 +14,22 @@
             font-weight: bold;
             pointer-events: none;
         }
+        #calibrateButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
+    <button id="calibrateButton">Calibrate to Los Angeles</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3-geo@1.11.9/build/d3-geo.min.js"></script>
@@ -68,16 +81,6 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
-            // Fetch user geolocation and point globe to that location
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const { latitude, longitude } = position.coords;
-                    setInitialGlobeOrientation(latitude, longitude, earthRadius);
-                }, error => console.error("Geolocation error:", error));
-            } else {
-                console.warn("Geolocation not supported.");
-            }
-
             try {
                 // Load GeoJSON data and add country outlines
                 console.log("Fetching GeoJSON data...");
@@ -109,6 +112,11 @@
                 console.warn("Device orientation not supported. Using mouse navigation.");
             }
 
+            // Set up calibration button
+            document.getElementById("calibrateButton").addEventListener("click", () => {
+                calibrateToLocation(34.0522, -118.2437); // Los Angeles latitude and longitude
+            });
+
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
 
@@ -116,12 +124,12 @@
             animate();
         }
 
-        function setInitialGlobeOrientation(latitude, longitude, radius) {
+        function calibrateToLocation(latitude, longitude) {
             // Convert latitude and longitude to spherical coordinates
             const phi = THREE.Math.degToRad(90 - latitude);
             const theta = THREE.Math.degToRad(longitude + 180);
 
-            // Set initial rotation to align the user's location at the top
+            // Set globe rotation so the location appears in front
             globeGroup.rotation.x = phi - Math.PI / 2;
             globeGroup.rotation.y = -theta;
         }

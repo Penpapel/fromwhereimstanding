@@ -3,83 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Globe with HUD and Country Labels</title>
+    <title>Through-the-Earth View</title>
     <style>
-        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
-        #hud { position: absolute; top: 10px; left: 10px; color: #FFFFFF; background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 8px; }
-        #hud span { display: block; }
+        body { margin: 0; overflow: hidden; }
     </style>
 </head>
 <body>
-    <div id="hud">
-        <span id="latitude">Latitude: Loading...</span>
-        <span id="longitude">Longitude: Loading...</span>
-    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         let camera, scene, renderer, globe;
-        const hudLat = document.getElementById('latitude');
-        const hudLon = document.getElementById('longitude');
+        const earthRadius = 5; // Radius of the globe in Three.js units
 
-        // Initialize the globe and Three.js scene
+        // Initialize the scene
         function init() {
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // Load Earth texture
-            const textureLoader = new THREE.TextureLoader();
-            const earthTexture = textureLoader.load('world.200412.3x5400x2700.jpg');
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-            // Create globe sphere with texture
-            const geometry = new THREE.SphereGeometry(5, 64, 64);
-            const material = new THREE.MeshStandardMaterial({ map: earthTexture });
+            // Create inverted sphere to simulate concave interior of the globe
+            const geometry = new THREE.SphereGeometry(earthRadius, 64, 64);
+            const textureLoader = new THREE.TextureLoader();
+            const earthTexture = textureLoader.load('path_to_earth_texture.jpg');
+            const material = new THREE.MeshBasicMaterial({
+                map: earthTexture,
+                side: THREE.BackSide // Render the inside of the sphere
+            });
             globe = new THREE.Mesh(geometry, material);
             scene.add(globe);
 
-            // Add lighting for effect
-            const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // soft white light
-            scene.add(ambientLight);
-
-            const pointLight = new THREE.PointLight(0xffffff, 1);
-            camera.add(pointLight);
-            scene.add(camera);
-
-            camera.position.z = 10;
-
             // Get user location
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(updateHUD, showError);
+                navigator.geolocation.getCurrentPosition(position => {
+                    setCameraPosition(position.coords.latitude, position.coords.longitude);
+                }, showError);
             } else {
                 alert("Geolocation is not supported by this browser.");
             }
 
             window.addEventListener('resize', onWindowResize, false);
-            window.addEventListener("deviceorientation", handleOrientation);
-
             animate();
         }
 
-        // Update HUD with latitude and longitude
-        function updateHUD(position) {
-            const { latitude, longitude } = position.coords;
-            hudLat.textContent = `Latitude: ${latitude.toFixed(4)}`;
-            hudLon.textContent = `Longitude: ${longitude.toFixed(4)}`;
-        }
+        // Convert lat/long to 3D coordinates and position camera
+        function setCameraPosition(lat, lon) {
+            // Convert latitude and longitude to radians
+            const latRad = THREE.Math.degToRad(lat);
+            const lonRad = THREE.Math.degToRad(lon);
 
-        // Handle device orientation to adjust globe view
-        function handleOrientation(event) {
-            const alpha = THREE.Math.degToRad(event.alpha || 0);
-            const beta = THREE.Math.degToRad(event.beta || 0);
-            const gamma = THREE.Math.degToRad(event.gamma || 0);
-            
-            // Rotate the globe based on device orientation
-            globe.rotation.y = -alpha; // Yaw
-            globe.rotation.x = beta - Math.PI / 2; // Pitch
-            globe.rotation.z = -gamma; // Roll
+            // Calculate the position on the Earth's surface
+            const x = earthRadius * Math.cos(latRad) * Math.cos(lonRad);
+            const y = earthRadius * Math.sin(latRad);
+            const z = earthRadius * Math.cos(latRad) * Math.sin(lonRad);
+
+            // Position the camera on this point
+            camera.position.set(x, y, z);
+
+            // Make the camera look towards the center of the Earth (0, 0, 0)
+            camera.lookAt(0, 0, 0);
         }
 
         // Error handler for geolocation
@@ -113,7 +97,6 @@
             renderer.render(scene, camera);
         }
 
-        // Initialize the app
         init();
     </script>
 </body>

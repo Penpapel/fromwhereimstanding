@@ -42,6 +42,15 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
             scene.add(ambientLight);
 
+            // Get user's current location and set initial globe orientation
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    setInitialGlobeOrientation(position.coords.latitude, position.coords.longitude);
+                }, showError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+
             // Handle device orientation
             window.addEventListener('deviceorientation', handleOrientation, true);
 
@@ -49,6 +58,17 @@
             window.addEventListener('resize', onWindowResize, false);
 
             animate();
+        }
+
+        // Set initial globe rotation based on user's location
+        function setInitialGlobeOrientation(latitude, longitude) {
+            // Convert latitude and longitude to radians
+            const latRad = THREE.Math.degToRad(latitude);
+            const lonRad = THREE.Math.degToRad(longitude);
+
+            // Rotate the globe to bring the user's location to the top
+            globe.rotation.x = latRad - Math.PI / 2;  // Align latitude
+            globe.rotation.y = -lonRad;               // Align longitude
         }
 
         // Handle device orientation and update camera rotation
@@ -59,6 +79,24 @@
 
             // Adjust camera rotation based on device orientation
             camera.rotation.set(beta - Math.PI / 2, gamma, -alpha);
+        }
+
+        // Error handler for geolocation
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("User denied the request for Geolocation.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred.");
+                    break;
+            }
         }
 
         // Resize handler

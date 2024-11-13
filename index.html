@@ -68,6 +68,16 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
+            // Fetch user geolocation and point globe to that location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const { latitude, longitude } = position.coords;
+                    setInitialGlobeOrientation(latitude, longitude, earthRadius);
+                }, error => console.error("Geolocation error:", error));
+            } else {
+                console.warn("Geolocation not supported.");
+            }
+
             try {
                 // Load GeoJSON data and add country outlines
                 console.log("Fetching GeoJSON data...");
@@ -104,6 +114,16 @@
 
             // Start the animation loop
             animate();
+        }
+
+        function setInitialGlobeOrientation(latitude, longitude, radius) {
+            // Convert latitude and longitude to spherical coordinates
+            const phi = THREE.Math.degToRad(90 - latitude);
+            const theta = THREE.Math.degToRad(longitude + 180);
+
+            // Set initial rotation to align the user's location at the top
+            globeGroup.rotation.x = phi - Math.PI / 2;
+            globeGroup.rotation.y = -theta;
         }
 
         function handleOrientation(event) {

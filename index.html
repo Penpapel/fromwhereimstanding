@@ -131,8 +131,10 @@
             const beta = event.beta ? THREE.Math.degToRad(event.beta) : 0;   // Pitch
             const gamma = event.gamma ? THREE.Math.degToRad(event.gamma) : 0; // Roll
 
-            // Apply orientation values to globe rotation
-            globeGroup.rotation.set(beta - Math.PI / 2, gamma, -alpha);
+            // Use quaternions to apply orientation to avoid gimbal lock
+            const quaternion = new THREE.Quaternion()
+                .setFromEuler(new THREE.Euler(beta - Math.PI / 2, gamma, -alpha, "YXZ"));
+            globeGroup.quaternion.copy(quaternion);
         }
 
         function drawCountryOutlines(countries, radius) {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Wireframe Earth with Continent Outlines</title>
+    <title>3D Wireframe Earth with Country Outlines</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -18,6 +18,8 @@
         let scene, camera, renderer, globe;
 
         async function init() {
+            console.log("Initializing scene...");
+
             // Set up the scene
             scene = new THREE.Scene();
 
@@ -45,11 +47,22 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
-            // Load GeoJSON data and add continent outlines
-            const geoData = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/continents-110m.json')
-                .then(response => response.json());
-            const continents = topojson.feature(geoData, geoData.objects.continents).features;
-            drawContinentOutlines(continents, earthRadius);
+            try {
+                // Load GeoJSON data and add country outlines
+                console.log("Fetching GeoJSON data...");
+                const geoData = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+                    .then(response => {
+                        if (!response.ok) throw new Error("Network response was not ok");
+                        return response.json();
+                    });
+                console.log("GeoJSON data fetched successfully.");
+
+                const countries = topojson.feature(geoData, geoData.objects.countries).features;
+                drawCountryOutlines(countries, earthRadius);
+
+            } catch (error) {
+                console.error("Error loading GeoJSON data:", error);
+            }
 
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
@@ -58,11 +71,12 @@
             animate();
         }
 
-        function drawContinentOutlines(continents, radius) {
+        function drawCountryOutlines(countries, radius) {
+            console.log("Drawing country outlines...");
             const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
-            continents.forEach(continent => {
-                continent.geometry.coordinates.forEach(polygon => {
+            countries.forEach(country => {
+                country.geometry.coordinates.forEach(polygon => {
                     polygon.forEach(ring => {
                         const points = [];
                         ring.forEach(([lon, lat]) => {
@@ -74,13 +88,14 @@
                             points.push(new THREE.Vector3(x, y, z));
                         });
 
-                        // Create a line geometry for the continent outline
+                        // Create a line geometry for the country outline
                         const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
                         const line = new THREE.Line(lineGeometry, lineMaterial);
                         scene.add(line);
                     });
                 });
             });
+            console.log("Country outlines drawn.");
         }
 
         function animate() {

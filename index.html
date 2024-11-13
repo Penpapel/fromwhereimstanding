@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inside Earth View</title>
+    <title>Inside Earth View with Device Orientation</title>
     <style>
         body { margin: 0; overflow: hidden; }
     </style>
@@ -42,10 +42,23 @@
             const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
             scene.add(ambientLight);
 
+            // Handle device orientation
+            window.addEventListener('deviceorientation', handleOrientation, true);
+
             // Event listener for resizing
             window.addEventListener('resize', onWindowResize, false);
 
             animate();
+        }
+
+        // Handle device orientation and update camera rotation
+        function handleOrientation(event) {
+            const alpha = event.alpha ? THREE.Math.degToRad(event.alpha) : 0; // Yaw
+            const beta = event.beta ? THREE.Math.degToRad(event.beta) : 0;   // Pitch
+            const gamma = event.gamma ? THREE.Math.degToRad(event.gamma) : 0; // Roll
+
+            // Adjust camera rotation based on device orientation
+            camera.rotation.set(beta - Math.PI / 2, gamma, -alpha);
         }
 
         // Resize handler

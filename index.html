@@ -146,16 +146,26 @@
             globeGroup.rotation.y = -compassHeading;
         }
 
-        function addLatitudeLine(latitude, radius) {
-            const phi = THREE.Math.degToRad(90 - latitude);
-            const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
-            const geometry = new THREE.CircleGeometry(radius, 64);
-            geometry.vertices.shift();
-            const line = new THREE.Line(geometry, material);
-            line.rotation.x = phi;
-            line.computeLineDistances();
-            globeGroup.add(line);
-        }
+function addLatitudeLine(latitude, radius) {
+    const phi = THREE.Math.degToRad(90 - latitude);
+    const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
+    
+    // Create a circular line geometry for the latitude line
+    const circlePoints = [];
+    for (let i = 0; i <= 64; i++) {
+        const theta = (i / 64) * Math.PI * 2;
+        const x = radius * Math.cos(theta) * Math.sin(phi);
+        const y = radius * Math.cos(phi);
+        const z = radius * Math.sin(theta) * Math.sin(phi);
+        circlePoints.push(new THREE.Vector3(x, y, z));
+    }
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(circlePoints);
+    const line = new THREE.Line(geometry, material);
+    line.computeLineDistances();
+    globeGroup.add(line);
+}
+
 
         function addLongitudeLine(longitude, radius) {
             const theta = THREE.Math.degToRad(longitude);

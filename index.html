@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Globe with HUD and Country Labels</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #hud { position: absolute; top: 10px; left: 10px; color: #FFFFFF; background: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 8px; }
+        #hud span { display: block; }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <span id="latitude">Latitude: Loading...</span>
+        <span id="longitude">Longitude: Loading...</span>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let camera, scene, renderer, globe;
+        const hudLat = document.getElementById('latitude');
+        const hudLon = document.getElementById('longitude');
+
+        // Initialize the globe and Three.js scene
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Load Earth texture
+            const textureLoader = new THREE.TextureLoader();
+            const earthTexture = textureLoader.load('path_to_earth_texture.jpg');
+
+            // Create globe sphere with texture
+            const geometry = new THREE.SphereGeometry(5, 64, 64);
+            const material = new THREE.MeshStandardMaterial({ map: earthTexture });
+            globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+
+            // Add lighting for effect
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // soft white light
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 1);
+            camera.add(pointLight);
+            scene.add(camera);
+
+            camera.position.z = 10;
+
+            // Get user location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(updateHUD, showError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+
+            window.addEventListener('resize', onWindowResize, false);
+            window.addEventListener("deviceorientation", handleOrientation);
+
+            animate();
+        }
+
+        // Update HUD with latitude and longitude
+        function updateHUD(position) {
+            const { latitude, longitude } = position.coords;
+            hudLat.textContent = `Latitude: ${latitude.toFixed(4)}`;
+            hudLon.textContent = `Longitude: ${longitude.toFixed(4)}`;
+        }
+
+        // Handle device orientation to adjust globe view
+        function handleOrientation(event) {
+            const alpha = THREE.Math.degToRad(event.alpha || 0);
+            const beta = THREE.Math.degToRad(event.beta || 0);
+            const gamma = THREE.Math.degToRad(event.gamma || 0);
+            
+            // Rotate the globe based on device orientation
+            globe.rotation.y = -alpha; // Yaw
+            globe.rotation.x = beta - Math.PI / 2; // Pitch
+            globe.rotation.z = -gamma; // Roll
+        }
+
+        // Error handler for geolocation
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("User denied the request for Geolocation.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("Location information is unavailable.");
+                    break;
+                case error.TIMEOUT:
+                    alert("The request to get user location timed out.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("An unknown error occurred.");
+                    break;
+            }
+        }
+
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        // Initialize the app
+        init();
+    </script>
+</body>
+</html>

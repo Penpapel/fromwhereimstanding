@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Earth with Country Outlines and City Markers</title>
+    <title>3D Earth with Device Orientation Navigation</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -32,16 +32,16 @@
             // Set up the scene
             scene = new THREE.Scene();
 
-            // Set up the camera slightly off-center for orbit controls to work
+            // Set up the camera at the center of the globe
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000);
-            camera.position.z = 0.1;  // Slight offset from the center
+            camera.position.set(0, 0, 0);
 
             // Set up the renderer
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // Add orbit controls for navigation from the fixed point
+            // Add orbit controls as a fallback
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.25;
@@ -92,11 +92,27 @@
             addCityMarker(earthRadius, "Tokyo", 35.6895, 139.6917);
             addCityMarker(earthRadius, "Buenos Aires", -34.6037, -58.3816);
 
+            // Detect and handle device orientation
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener("deviceorientation", handleOrientation, true);
+            } else {
+                console.warn("Device orientation not supported. Using mouse navigation.");
+            }
+
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
 
             // Start the animation loop
             animate();
+        }
+
+        function handleOrientation(event) {
+            const alpha = event.alpha ? THREE.Math.degToRad(event.alpha) : 0; // Yaw
+            const beta = event.beta ? THREE.Math.degToRad(event.beta) : 0;   // Pitch
+            const gamma = event.gamma ? THREE.Math.degToRad(event.gamma) : 0; // Roll
+
+            // Apply orientation values to globe rotation
+            globeGroup.rotation.set(beta - Math.PI / 2, gamma, -alpha);
         }
 
         function drawCountryOutlines(countries, radius) {

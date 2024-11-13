@@ -27,7 +27,7 @@
             // Create inverted sphere to simulate concave interior of the globe
             const geometry = new THREE.SphereGeometry(earthRadius, 64, 64);
             const textureLoader = new THREE.TextureLoader();
-            const earthTexture = textureLoader.load('path_to_earth_texture.jpg');
+            const earthTexture = textureLoader.load('world.200412.3x5400x2700.jpg');
             const material = new THREE.MeshBasicMaterial({
                 map: earthTexture,
                 side: THREE.BackSide // Render the inside of the sphere

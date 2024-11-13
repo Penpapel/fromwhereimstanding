@@ -76,26 +76,38 @@
             const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
             countries.forEach(country => {
-                country.geometry.coordinates.forEach(polygon => {
-                    polygon.forEach(ring => {
-                        const points = [];
-                        ring.forEach(([lon, lat]) => {
-                            const phi = THREE.Math.degToRad(90 - lat);
-                            const theta = THREE.Math.degToRad(lon + 180);
-                            const x = radius * Math.sin(phi) * Math.cos(theta);
-                            const y = radius * Math.cos(phi);
-                            const z = radius * Math.sin(phi) * Math.sin(theta);
-                            points.push(new THREE.Vector3(x, y, z));
-                        });
+                // Check the type of geometry (Polygon or MultiPolygon)
+                const geometryType = country.geometry.type;
+                const coordinates = country.geometry.coordinates;
 
-                        // Create a line geometry for the country outline
-                        const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
-                        const line = new THREE.Line(lineGeometry, lineMaterial);
-                        scene.add(line);
-                    });
-                });
+                if (geometryType === "Polygon") {
+                    // Process single Polygon
+                    drawPolygonOutline(coordinates, radius, lineMaterial);
+                } else if (geometryType === "MultiPolygon") {
+                    // Process each Polygon in a MultiPolygon
+                    coordinates.forEach(polygon => drawPolygonOutline(polygon, radius, lineMaterial));
+                }
             });
             console.log("Country outlines drawn.");
+        }
+
+        function drawPolygonOutline(polygon, radius, material) {
+            polygon.forEach(ring => {
+                const points = [];
+                ring.forEach(([lon, lat]) => {
+                    const phi = THREE.Math.degToRad(90 - lat);
+                    const theta = THREE.Math.degToRad(lon + 180);
+                    const x = radius * Math.sin(phi) * Math.cos(theta);
+                    const y = radius * Math.cos(phi);
+                    const z = radius * Math.sin(phi) * Math.sin(theta);
+                    points.push(new THREE.Vector3(x, y, z));
+                });
+
+                // Create a line geometry for the country outline
+                const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(lineGeometry, material);
+                scene.add(line);
+            });
         }
 
         function animate() {

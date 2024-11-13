@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Through-the-Earth View</title>
+    <title>Inside Earth View</title>
     <style>
         body { margin: 0; overflow: hidden; }
     </style>
@@ -12,79 +12,43 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         let camera, scene, renderer, globe;
-        const earthRadius = 5; // Radius of the globe in Three.js units
 
-        // Initialize the scene
         function init() {
+            // Initialize scene
             scene = new THREE.Scene();
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // Create camera
+            // Set up camera at the center of the Earth
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 0);  // Position at the center of the globe
 
-            // Create inverted sphere to simulate concave interior of the globe
-            const geometry = new THREE.SphereGeometry(earthRadius, 64, 64);
+            // Load Earth texture and create double-sided material
             const textureLoader = new THREE.TextureLoader();
-            const earthTexture = textureLoader.load('world.200412.3x5400x2700.jpg');
+            const earthTexture = textureLoader.load('path_to_earth_texture.jpg');
             const material = new THREE.MeshBasicMaterial({
                 map: earthTexture,
-                side: THREE.BackSide // Render the inside of the sphere
+                side: THREE.DoubleSide // Make texture double-sided
             });
+
+            // Create the globe with a radius slightly larger than the near clipping plane
+            const earthRadius = 5;
+            const geometry = new THREE.SphereGeometry(earthRadius, 64, 64);
             globe = new THREE.Mesh(geometry, material);
             scene.add(globe);
 
-            // Get user location
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    setCameraPosition(position.coords.latitude, position.coords.longitude);
-                }, showError);
-            } else {
-                alert("Geolocation is not supported by this browser.");
-            }
+            // Add ambient lighting for visibility
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+            scene.add(ambientLight);
 
+            // Event listener for resizing
             window.addEventListener('resize', onWindowResize, false);
+
             animate();
         }
 
-        // Convert lat/long to 3D coordinates and position camera
-        function setCameraPosition(lat, lon) {
-            // Convert latitude and longitude to radians
-            const latRad = THREE.Math.degToRad(lat);
-            const lonRad = THREE.Math.degToRad(lon);
-
-            // Calculate the position on the Earth's surface
-            const x = earthRadius * Math.cos(latRad) * Math.cos(lonRad);
-            const y = earthRadius * Math.sin(latRad);
-            const z = earthRadius * Math.cos(latRad) * Math.sin(lonRad);
-
-            // Position the camera on this point
-            camera.position.set(x, y, z);
-
-            // Make the camera look towards the center of the Earth (0, 0, 0)
-            camera.lookAt(0, 0, 0);
-        }
-
-        // Error handler for geolocation
-        function showError(error) {
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    alert("User denied the request for Geolocation.");
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    alert("Location information is unavailable.");
-                    break;
-                case error.TIMEOUT:
-                    alert("The request to get user location timed out.");
-                    break;
-                case error.UNKNOWN_ERROR:
-                    alert("An unknown error occurred.");
-                    break;
-            }
-        }
-
-        // Handle window resize
+        // Resize handler
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();

@@ -3,10 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Wireframe Earth with Country Outlines</title>
+    <title>3D Wireframe Earth with Country Outlines and City Markers</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
+        .label {
+            position: absolute;
+            color: red;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -15,7 +22,8 @@
     <script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
 
     <script>
-        let scene, camera, renderer, globe;
+        let scene, camera, renderer, globe, globeGroup;
+        const cityLabels = [];
 
         async function init() {
             console.log("Initializing scene...");
@@ -32,6 +40,10 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
+            // Create a group to rotate everything together
+            globeGroup = new THREE.Group();
+            scene.add(globeGroup);
+
             // Create the Earth as a wireframe sphere
             const earthRadius = 5;
             const segments = 32;
@@ -41,7 +53,7 @@
                 wireframe: true
             });
             globe = new THREE.Mesh(earthGeometry, wireframeMaterial);
-            scene.add(globe);
+            globeGroup.add(globe);
 
             // Add ambient lighting
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -64,6 +76,13 @@
                 console.error("Error loading GeoJSON data:", error);
             }
 
+            // Add major cities with red points and labels
+            addCityMarker(earthRadius, "Los Angeles", 34.0522, -118.2437);
+            addCityMarker(earthRadius, "New York", 40.7128, -74.0060);
+            addCityMarker(earthRadius, "Paris", 48.8566, 2.3522);
+            addCityMarker(earthRadius, "Tokyo", 35.6895, 139.6917);
+            addCityMarker(earthRadius, "Buenos Aires", -34.6037, -58.3816);
+
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
 
@@ -76,15 +95,12 @@
             const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
             countries.forEach(country => {
-                // Check the type of geometry (Polygon or MultiPolygon)
                 const geometryType = country.geometry.type;
                 const coordinates = country.geometry.coordinates;
 
                 if (geometryType === "Polygon") {
-                    // Process single Polygon
                     drawPolygonOutline(coordinates, radius, lineMaterial);
                 } else if (geometryType === "MultiPolygon") {
-                    // Process each Polygon in a MultiPolygon
                     coordinates.forEach(polygon => drawPolygonOutline(polygon, radius, lineMaterial));
                 }
             });
@@ -103,18 +119,55 @@
                     points.push(new THREE.Vector3(x, y, z));
                 });
 
-                // Create a line geometry for the country outline
                 const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
                 const line = new THREE.Line(lineGeometry, material);
-                scene.add(line);
+                globeGroup.add(line);
+            });
+        }
+
+        function addCityMarker(radius, name, latitude, longitude) {
+            const phi = THREE.Math.degToRad(90 - latitude);
+            const theta = THREE.Math.degToRad(longitude + 180);
+
+            // Calculate 3D position on the globe's surface
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.cos(phi);
+            const z = radius * Math.sin(phi) * Math.sin(theta);
+
+            // Create a red point for the city
+            const pointGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+            const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const point = new THREE.Mesh(pointGeometry, pointMaterial);
+            point.position.set(x, y, z);
+            globeGroup.add(point);
+
+            // Create a label for the city
+            const label = document.createElement('div');
+            label.className = 'label';
+            label.textContent = name;
+            document.body.appendChild(label);
+
+            // Store the label for updating position
+            cityLabels.push({ label, position: new THREE.Vector3(x, y, z) });
+        }
+
+        function updateCityLabels() {
+            cityLabels.forEach(({ label, position }) => {
+                const vector = position.clone().project(camera);
+                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (1 - vector.y * 0.5 - 0.5) * window.innerHeight;
+                label.style.transform = `translate(-50%, -50%) translate(${x}px,${y}px)`;
             });
         }
 
         function animate() {
             requestAnimationFrame(animate);
 
-            // Rotate the globe for a dynamic effect
-            globe.rotation.y += 0.002;
+            // Rotate the entire group for dynamic effect
+            globeGroup.rotation.y += 0.002;
+
+            // Update city labels' positions
+            updateCityLabels();
 
             // Render the scene
             renderer.render(scene, camera);

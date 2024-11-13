@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Earth with Geolocation and Compass Orientation</title>
+    <title>3D Earth with Orientation Markings</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -38,6 +38,13 @@
     <script>
         let scene, camera, renderer, globeGroup;
         const cityLabels = [];
+        const cities = [
+            { name: "Los Angeles", latitude: 34.0522, longitude: -118.2437 },
+            { name: "New York", latitude: 40.7128, longitude: -74.0060 },
+            { name: "Paris", latitude: 48.8566, longitude: 2.3522 },
+            { name: "Tokyo", latitude: 35.6895, longitude: 139.6917 },
+            { name: "Buenos Aires", latitude: -34.6037, longitude: -58.3816 }
+        ];
 
         async function init() {
             console.log("Initializing scene...");
@@ -55,11 +62,11 @@
             scene.add(globeGroup);
 
             // Create the Earth as a large semi-transparent sphere
-            const earthRadius = 20;  // Increase radius to make the globe appear larger than the viewport
+            const earthRadius = 20;
             const earthGeometry = new THREE.SphereGeometry(earthRadius, 64, 64);
             const earthMaterial = new THREE.MeshBasicMaterial({
-                color: 0x000000, // Set to black for minimal visibility
-                opacity: 0.05,   // Mostly transparent
+                color: 0x000000,
+                opacity: 0.05,
                 transparent: true
             });
             const globe = new THREE.Mesh(earthGeometry, earthMaterial);
@@ -70,15 +77,11 @@
             scene.add(ambientLight);
 
             try {
-                // Load GeoJSON data and add country outlines
-                console.log("Fetching GeoJSON data...");
                 const geoData = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
                     .then(response => {
                         if (!response.ok) throw new Error("Network response was not ok");
                         return response.json();
                     });
-                console.log("GeoJSON data fetched successfully.");
-
                 const countries = topojson.feature(geoData, geoData.objects.countries).features;
                 drawCountryOutlines(countries, earthRadius);
 
@@ -86,12 +89,15 @@
                 console.error("Error loading GeoJSON data:", error);
             }
 
-            // Add major cities with red points and labels
-            addCityMarker(earthRadius, "Los Angeles", 34.0522, -118.2437);
-            addCityMarker(earthRadius, "New York", 40.7128, -74.0060);
-            addCityMarker(earthRadius, "Paris", 48.8566, 2.3522);
-            addCityMarker(earthRadius, "Tokyo", 35.6895, 139.6917);
-            addCityMarker(earthRadius, "Buenos Aires", -34.6037, -58.3816);
+            // Add city markers and lines for each city
+            cities.forEach(city => {
+                addCityMarker(earthRadius, city.name, city.latitude, city.longitude);
+                addLatitudeLine(city.latitude, earthRadius);
+                addLongitudeLine(city.longitude, earthRadius);
+            });
+
+            // Add dashed line connecting the poles
+            addPoleLine(earthRadius);
 
             // Get the user's current location
             if (navigator.geolocation) {
@@ -103,7 +109,6 @@
                 console.warn("Geolocation not supported.");
             }
 
-            // Set up calibration button
             document.getElementById("calibrateButton").addEventListener("click", () => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(position => {
@@ -113,29 +118,23 @@
                 }
             });
 
-            // Detect and handle device orientation
             if (window.DeviceOrientationEvent) {
                 window.addEventListener("deviceorientation", handleOrientation, true);
             } else {
                 console.warn("Device orientation not supported.");
             }
 
-            // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
-
-            // Start the animation loop
             animate();
         }
 
         function positionCameraAboveLocation(latitude, longitude, distance) {
-            // Convert latitude and longitude to a 3D position vector
             const phi = THREE.Math.degToRad(90 - latitude);
             const theta = THREE.Math.degToRad(longitude + 180);
             const x = distance * Math.sin(phi) * Math.cos(theta);
             const y = distance * Math.cos(phi);
             const z = distance * Math.sin(phi) * Math.sin(theta);
 
-            // Position the camera above the current location
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(x, y, z);
             camera.lookAt(new THREE.Vector3(0, 0, 0));
@@ -144,13 +143,44 @@
 
         function handleOrientation(event) {
             const compassHeading = event.alpha ? THREE.Math.degToRad(event.alpha) : 0;
-            
-            // Apply compass heading to rotate the globe accurately
             globeGroup.rotation.y = -compassHeading;
         }
 
+        function addLatitudeLine(latitude, radius) {
+            const phi = THREE.Math.degToRad(90 - latitude);
+            const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
+            const geometry = new THREE.CircleGeometry(radius, 64);
+            geometry.vertices.shift();
+            const line = new THREE.Line(geometry, material);
+            line.rotation.x = phi;
+            line.computeLineDistances();
+            globeGroup.add(line);
+        }
+
+        function addLongitudeLine(longitude, radius) {
+            const theta = THREE.Math.degToRad(longitude);
+            const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(radius * Math.cos(theta), -radius, radius * Math.sin(theta)),
+                new THREE.Vector3(radius * Math.cos(theta), radius, radius * Math.sin(theta))
+            ]);
+            const line = new THREE.Line(geometry, material);
+            line.computeLineDistances();
+            globeGroup.add(line);
+        }
+
+        function addPoleLine(radius) {
+            const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
+            const geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, -radius, 0),
+                new THREE.Vector3(0, radius, 0)
+            ]);
+            const line = new THREE.Line(geometry, material);
+            line.computeLineDistances();
+            globeGroup.add(line);
+        }
+
         function drawCountryOutlines(countries, radius) {
-            console.log("Drawing country outlines...");
             const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
 
             countries.forEach(country => {
@@ -163,7 +193,6 @@
                     coordinates.forEach(polygon => drawPolygonOutline(polygon, radius, lineMaterial));
                 }
             });
-            console.log("Country outlines drawn.");
         }
 
         function drawPolygonOutline(polygon, radius, material) {
@@ -187,26 +216,21 @@
         function addCityMarker(radius, name, latitude, longitude) {
             const phi = THREE.Math.degToRad(90 - latitude);
             const theta = THREE.Math.degToRad(longitude + 180);
-
-            // Calculate 3D position on the globe's surface
             const x = radius * Math.sin(phi) * Math.cos(theta);
             const y = radius * Math.cos(phi);
             const z = radius * Math.sin(phi) * Math.sin(theta);
 
-            // Create a red point for the city
-            const pointGeometry = new THREE.SphereGeometry(0.1, 8, 8); // Slightly larger sphere
+            const pointGeometry = new THREE.SphereGeometry(0.1, 8, 8);
             const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
             const point = new THREE.Mesh(pointGeometry, pointMaterial);
             point.position.set(x, y, z);
             globeGroup.add(point);
 
-            // Create a label for the city
             const label = document.createElement('div');
             label.className = 'label';
             label.textContent = name;
             document.body.appendChild(label);
 
-            // Store the label for updating position
             cityLabels.push({ label, position: new THREE.Vector3(x, y, z) });
         }
 
@@ -221,11 +245,7 @@
 
         function animate() {
             requestAnimationFrame(animate);
-
-            // Update city labels' positions
             updateCityLabels();
-
-            // Render the scene
             renderer.render(scene, camera);
         }
 
@@ -237,7 +257,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
-        // Initialize the app
         init();
     </script>
 </body>

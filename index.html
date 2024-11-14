@@ -9,8 +9,8 @@
         canvas { display: block; }
         .label {
             position: absolute;
-            color: red;
-            font-size: 12px;
+            color: 0xffffff;
+            font-size: 24px;
             font-weight: bold;
             pointer-events: none;
         }
@@ -147,7 +147,7 @@
         }
 function addLatitudeLine(latitude, radius) {
     const phi = THREE.Math.degToRad(90 - latitude);
-    const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
+    const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.1 });
     
     // Create a circular line geometry for the latitude line
     const circlePoints = [];

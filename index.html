@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Earth with Orientation Markings</title>
+    <title>3D Earth with Real-World Navigation Orientation</title>
     <style>
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
@@ -36,7 +36,7 @@
     <script src="https://cdn.jsdelivr.net/npm/topojson@3"></script>
 
     <script>
-        let scene, camera, renderer, globeGroup;
+        let scene, camera, renderer, globeGroup, userLatitude, userLongitude;
         const cityLabels = [];
         const cities = [
             { name: "Los Angeles", latitude: 34.0522, longitude: -118.2437 },
@@ -102,8 +102,9 @@
             // Get the user's current location
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(position => {
-                    const { latitude, longitude } = position.coords;
-                    positionCameraAboveLocation(latitude, longitude, earthRadius + 5);
+                    userLatitude = position.coords.latitude;
+                    userLongitude = position.coords.longitude;
+                    positionCameraAboveLocation(userLatitude, userLongitude, earthRadius + 5);
                 }, error => console.error("Geolocation error:", error));
             } else {
                 console.warn("Geolocation not supported.");
@@ -112,8 +113,9 @@
             document.getElementById("calibrateButton").addEventListener("click", () => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(position => {
-                        const { latitude, longitude } = position.coords;
-                        positionCameraAboveLocation(latitude, longitude, earthRadius + 5);
+                        userLatitude = position.coords.latitude;
+                        userLongitude = position.coords.longitude;
+                        positionCameraAboveLocation(userLatitude, userLongitude, earthRadius + 5);
                     }, error => console.error("Geolocation error:", error));
                 }
             });
@@ -143,29 +145,34 @@
 
         function handleOrientation(event) {
             const compassHeading = event.alpha ? THREE.Math.degToRad(event.alpha) : 0;
-            globeGroup.rotation.y = -compassHeading;
+            alignGlobeWithCompass(compassHeading);
         }
 
-function addLatitudeLine(latitude, radius) {
-    const phi = THREE.Math.degToRad(90 - latitude);
-    const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
-    
-    // Create a circular line geometry for the latitude line
-    const circlePoints = [];
-    for (let i = 0; i <= 64; i++) {
-        const theta = (i / 64) * Math.PI * 2;
-        const x = radius * Math.cos(theta) * Math.sin(phi);
-        const y = radius * Math.cos(phi);
-        const z = radius * Math.sin(theta) * Math.sin(phi);
-        circlePoints.push(new THREE.Vector3(x, y, z));
-    }
-    
-    const geometry = new THREE.BufferGeometry().setFromPoints(circlePoints);
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-    globeGroup.add(line);
-}
+        function alignGlobeWithCompass(compassHeading) {
+            // Calculate rotation for accurate alignment with compass
+            const userPhi = THREE.Math.degToRad(90 - userLatitude);
+            const userTheta = THREE.Math.degToRad(userLongitude + 180);
 
+            globeGroup.rotation.set(userPhi, -userTheta, 0);
+            globeGroup.rotation.y -= compassHeading;
+        }
+
+        function addLatitudeLine(latitude, radius) {
+            const phi = THREE.Math.degToRad(90 - latitude);
+            const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
+            const circlePoints = [];
+            for (let i = 0; i <= 64; i++) {
+                const theta = (i / 64) * Math.PI * 2;
+                const x = radius * Math.cos(theta) * Math.sin(phi);
+                const y = radius * Math.cos(phi);
+                const z = radius * Math.sin(theta) * Math.sin(phi);
+                circlePoints.push(new THREE.Vector3(x, y, z));
+            }
+            const geometry = new THREE.BufferGeometry().setFromPoints(circlePoints);
+            const line = new THREE.Line(geometry, material);
+            line.computeLineDistances();
+            globeGroup.add(line);
+        }
 
         function addLongitudeLine(longitude, radius) {
             const theta = THREE.Math.degToRad(longitude);

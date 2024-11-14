@@ -145,10 +145,9 @@
             const compassHeading = event.alpha ? THREE.Math.degToRad(event.alpha) : 0;
             globeGroup.rotation.y = -compassHeading;
         }
-
-        function addLatitudeLine(latitude, radius) {
+function addLatitudeLine(latitude, radius) {
     const phi = THREE.Math.degToRad(90 - latitude);
-    const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.1 });
+    const material = new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 1, gapSize: 0.5 });
     
     // Create a circular line geometry for the latitude line
     const circlePoints = [];
@@ -164,7 +163,7 @@
     const line = new THREE.Line(geometry, material);
     line.computeLineDistances();
     globeGroup.add(line);
-}
+    
         }
 
         function addLongitudeLine(longitude, radius) {
